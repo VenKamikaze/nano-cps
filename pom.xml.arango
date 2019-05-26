@@ -10,7 +10,6 @@
     <properties>
         <java.version>1.8</java.version>
         <arangodb.version>4.2.2</arangodb.version>
-        <h2.version>1.4.199</h2.version>
     </properties>
 
     <parent>
@@ -25,10 +24,11 @@
             <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/net.ser1/gozirra-client -->
         <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <version>${h2.version}</version>
+            <groupId>com.arangodb</groupId>
+            <artifactId>arangodb-java-driver</artifactId>
+            <version>${arangodb.version}</version>
         </dependency>
 
         <dependency>

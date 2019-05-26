@@ -1,22 +1,23 @@
 package org.awiki.kamikaze.nanocps.db;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+import org.awiki.kamikaze.nanocps.message.Topics;
 import org.springframework.stereotype.Component;
 
-import com.arangodb.ArangoCollection;
 import com.arangodb.ArangoCursor;
 import com.arangodb.ArangoDB;
 import com.arangodb.ArangoDBException;
 import com.arangodb.ArangoDatabase;
-import com.arangodb.entity.BaseDocument;
 import com.arangodb.entity.CollectionEntity;
+import com.arangodb.util.MapBuilder;
 
 @Component
-public class ArangoStore implements Store
+public class ArangoStore implements CPSStore
 {
   private static final String DB_NAME = "NANO_DB";
   static final ArangoDB arangoDB = new ArangoDB.Builder().build();
@@ -133,4 +134,19 @@ public class ArangoStore implements Store
     return results;
   }
 
+  public Collection<Object> getConfirmedBlocksForWindow(long secondsBeforeNow)
+  {
+    String aql = "FOR t IN " + this.getName()
+            + " FILTER t.topic == @topic "
+            + " FILTER TO_NUMBER(t.time) >= TO_NUMBER(@startTime) " /*
+                                                                     * and t.time >= @startTime and t.time <= DATE_NOW()
+                                                                     */ + " RETURN t";
+    MapBuilder paramBuilder = new MapBuilder();
+    paramBuilder.put("startTime", Instant.now().minusSeconds(secondsBeforeNow).toEpochMilli());
+    paramBuilder.put("topic", Topics.CONFIRMATION);
+    System.out.println("AQL: " + aql);
+    System.out.println("Params: " + paramBuilder.get().toString());
+    return this.queryItems(aql, paramBuilder.get());
+  }
+  
 }

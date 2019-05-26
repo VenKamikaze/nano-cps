@@ -1,7 +1,12 @@
 package org.awiki.kamikaze.nanocps;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.awiki.kamikaze.nanocps.client.WebsocketSubscriber;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,17 +18,45 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class ConfirmationController
 {
   @Autowired
+  private TaskExecutor taskExecutor;
+  
+  @Autowired
+  private ApplicationContext applicationContext;
+  
+  @Autowired
   private WebsocketSubscriber subscriber;
   
-  @RequestMapping(value = "/subscribe/{topic}", method = RequestMethod.GET)
+  private List<String> topicsSubscribed = new ArrayList<>();
+  
+  private PollCpsThread poller = null;
+  
+  @RequestMapping(value = "/subscribe/{topic}", method = RequestMethod.GET, produces = MediaType.TEXT_PLAIN_VALUE)
   @ResponseBody
   public String subscribe(@PathVariable String topic) {
-    return subscriber.subscribeTo(topic);
+    String output = "Already subscribed to: " + topic;
+    if(! topicsSubscribed.contains(topic))
+    {
+      output = subscriber.subscribeTo(topic);
+      topicsSubscribed.add(topic);
+      if(poller == null) {
+        poller = applicationContext.getBean(PollCpsThread.class);
+        taskExecutor.execute(poller);
+      }
+      else if (! poller.running.get() ) {
+        taskExecutor.execute(poller);
+      }
+    }
+    
+    return output;
   }
   
-  @RequestMapping(value = "/unsubscribe/{topic}", method = RequestMethod.GET)
+  @RequestMapping(value = "/unsubscribe/{topic}", method = RequestMethod.GET, produces = MediaType.TEXT_PLAIN_VALUE)
   @ResponseBody
   public String unsubscribe(@PathVariable String topic) {
+    topicsSubscribed.remove(topic);
+    if(poller != null) {
+      poller.running.set(false);
+    }
     return subscriber.unsubscribeFrom(topic);
   }
   
